@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Amaan's 13F Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    .card { transition: all 0.2s ease; }
+    .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+  </style>
+</head>
+<body class="bg-stone-50 min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-stone-200 sticky top-0 z-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div>
+            <h1 class="text-xl sm:text-2xl font-bold text-stone-900">Amaan's 13F Tracker</h1>
+            <p class="text-xs text-stone-500 mt-0.5">Shameless Cloner Edition • <span class="text-emerald-600 font-medium">Only ≥10% Positions</span></p>
+          </div>
+          <!-- Reload Button -->
+          <button onclick="location.reload()" class="ml-2 p-2 rounded-lg bg-stone-100 hover:bg-stone-200 transition-colors" title="Refresh Data">
+            <svg class="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="flex items-center gap-4 sm:gap-6">
+          <div class="text-center px-3">
+            <p class="text-xl sm:text-2xl font-bold text-emerald-600" id="totalPicks">0</p>
+            <p class="text-[10px] text-stone-400 uppercase tracking-wide">Picks</p>
+          </div>
+          <div class="w-px h-8 bg-stone-200"></div>
+          <div class="text-center px-3">
+            <p class="text-xl sm:text-2xl font-bold text-stone-700" id="consensusCount">0</p>
+            <p class="text-[10px] text-stone-400 uppercase tracking-wide">Consensus</p>
+          </div>
+          <div class="w-px h-8 bg-stone-200"></div>
+          <div class="text-center px-3">
+            <p class="text-xl sm:text-2xl font-bold text-stone-700"><span id="activeCount">0</span><span class="text-stone-300" id="totalInvestors">/18</span></p>
+            <p class="text-[10px] text-stone-400 uppercase tracking-wide">Active</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+    <!-- Consensus Section -->
+    <section class="mb-10">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h2 class="text-lg sm:text-xl font-bold text-stone-900">High Conviction Consensus</h2>
+          <p class="text-xs text-stone-500 mt-0.5">Stocks held at ≥10% by 2+ superinvestors</p>
+        </div>
+        <div class="flex items-center gap-2 text-xs text-stone-500 bg-stone-100 px-3 py-1.5 rounded-full">
+          <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+          <span id="consensusLabel">0 stocks</span>
+        </div>
+      </div>
+      <div id="consensusGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+    </section>
+
+    <!-- Divider -->
+    <div class="h-px bg-stone-200 my-8"></div>
+
+    <!-- Search -->
+    <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
+      <div class="relative flex-1 max-w-sm">
+        <input type="text" id="searchInput" placeholder="Search investors or tickers..." class="w-full pl-10 pr-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white">
+        <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Investors Section -->
+    <section>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg sm:text-xl font-bold text-stone-900">All Superinvestors</h2>
+        <span class="text-xs text-stone-500" id="investorCount">18 investors</span>
+      </div>
+      <div id="investorGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-stone-200 mt-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6 text-center">
+      <p class="text-xs text-stone-500">Data from SEC 13F filings (Q3 2025) • Only ≥10% positions shown</p>
+      <p class="text-xs text-stone-400 mt-2 italic">"The big money is not in the buying and selling, but in the waiting." — Munger</p>
+    </div>
+  </footer>
+
+  <script>
+    // Current stock prices (January 2026)
+    const PRICES = {
+      'GOOGL': 334.55, 'GOOG': 335.50, 'PDD': 106.92, 'BAC': 51.76, 'BRK.B': 493.29,
+      'AAPL': 257.40, 'MU': 102.30, 'HCC': 89.55, 'AMR': 247.53, 'RIG': 4.90,
+      'VAL': 54.26, 'MA': 545.80, 'V': 328.14, 'MCO': 485.20, 'BN': 68.45,
+      'KKR': 148.50, 'MSFT': 428.50, 'AXP': 320.45, 'GE': 192.40, 'SPGI': 528.30,
+      'CVNA': 285.40, 'HGV': 48.75, 'LOAR': 80.25, 'LAD': 348.50, 'PM': 132.50,
+      'BABA': 92.45, 'UBER': 85.91, 'HHH': 81.54, 'QSR': 69.56, 'UNH': 524.80,
+      'EG': 412.30, 'G': 46.52, 'WNS': 76.48, 'TSM': 342.40, 'MCK': 833.46,
+      'BSX': 93.80, 'LPLA': 365.20, 'BRK.A': 740000, 'SIRI': 25.40, 'SYF': 58.20,
+      'OXY': 52.30, 'STLA': 14.80, 'ALLY': 38.50, 'ORCL': 168.50, 'AMZN': 216.30,
+      'SHOP': 112.40, 'RYCEF': 8.45, 'FWONK': 89.20, 'UMGNF': 28.50, 'CNSWF': 3850.00,
+      'NVDA': 142.50, 'MELI': 2150.00, 'SE': 118.50, 'SPOT': 485.20, 'TKO': 142.80,
+      'DIS': 118.50, 'INTU': 685.40, 'TMO': 585.20, 'RBC': 325.40, 'CPNG': 24.85,
+      'XPO': 142.30, 'TDG': 1425.80, 'COLL': 168.50, 'META': 669.21, 'NFLX': 945.30
+    };
+
+    // Sector colors
+    const SECTORS = {
+      'Technology': { bg: 'bg-blue-100', text: 'text-blue-800' },
+      'Financials': { bg: 'bg-slate-100', text: 'text-slate-700' },
+      'Consumer': { bg: 'bg-orange-100', text: 'text-orange-800' },
+      'Healthcare': { bg: 'bg-rose-100', text: 'text-rose-800' },
+      'Energy': { bg: 'bg-amber-100', text: 'text-amber-800' },
+      'Industrials': { bg: 'bg-gray-100', text: 'text-gray-700' },
+      'Real Estate': { bg: 'bg-emerald-100', text: 'text-emerald-800' },
+      'Travel': { bg: 'bg-sky-100', text: 'text-sky-800' },
+      'Communications': { bg: 'bg-purple-100', text: 'text-purple-800' },
+      'Automotive': { bg: 'bg-red-100', text: 'text-red-800' },
+      'Media': { bg: 'bg-pink-100', text: 'text-pink-800' }
+    };
+
+    // All investors data with entry prices per holding
+    const INVESTORS = [
+      {
+        id: 'lilu', name: 'Li Lu', fund: 'Himalaya Capital', aum: '$3.23B',
+        strategy: "Munger's protégé, Asia compounder specialist",
+        holdings: [
+          { ticker: 'GOOGL', name: 'Alphabet Inc A', weight: 19.14, shares: 2543300, sector: 'Technology', entryPrice: 95.20, entryDate: 'Q1 2023' },
+          { ticker: 'PDD', name: 'PDD Holdings', weight: 18.85, shares: 5200000, sector: 'Consumer', entryPrice: 68.50, entryDate: 'Q2 2022' },
+          { ticker: 'GOOG', name: 'Alphabet Inc C', weight: 18.48, shares: 2450000, sector: 'Technology', entryPrice: 95.80, entryDate: 'Q4 2022' },
+          { ticker: 'BAC', name: 'Bank of America', weight: 16.66, shares: 11500000, sector: 'Financials', entryPrice: 32.15, entryDate: 'Q3 2020' },
+          { ticker: 'BRK.B', name: 'Berkshire Hathaway B', weight: 13.97, shares: 920000, sector: 'Financials', entryPrice: 298.50, entryDate: 'Q2 2020' }
+        ]
+      },
+      {
+        id: 'pabrai', name: 'Mohnish Pabrai', fund: 'Dalal Street', aum: '$337M',
+        strategy: 'Deep value, shameless cloner, concentrated cyclicals',
+        holdings: [
+          { ticker: 'HCC', name: 'Warrior Met Coal', weight: 34.00, shares: 1799831, sector: 'Energy', entryPrice: 42.80, entryDate: 'Q1 2024' },
+          { ticker: 'AMR', name: 'Alpha Metallurgical', weight: 25.91, shares: 527673, sector: 'Energy', entryPrice: 145.30, entryDate: 'Q2 2024' },
+          { ticker: 'RIG', name: 'Transocean Ltd', weight: 22.64, shares: 19500000, sector: 'Energy', entryPrice: 5.85, entryDate: 'Q3 2024' },
+          { ticker: 'VAL', name: 'Valaris Ltd', weight: 15.44, shares: 1082000, sector: 'Energy', entryPrice: 68.20, entryDate: 'Q2 2024' }
+        ]
+      },
+      {
+        id: 'spier', name: 'Guy Spier', fund: 'Aquamarine Capital', aum: '$148M',
+        strategy: 'Buffett disciple, quality compounders',
+        holdings: [
+          { ticker: 'BRK.B', name: 'Berkshire Hathaway B', weight: 33.25, shares: 102000, sector: 'Financials', entryPrice: 185.20, entryDate: 'Q1 2015' },
+          { ticker: 'AXP', name: 'American Express', weight: 16.30, shares: 78000, sector: 'Financials', entryPrice: 142.50, entryDate: 'Q3 2019' },
+          { ticker: 'MA', name: 'Mastercard Inc', weight: 15.48, shares: 42000, sector: 'Financials', entryPrice: 320.40, entryDate: 'Q2 2019' },
+          { ticker: 'BRK.A', name: 'Berkshire Hathaway A', weight: 15.35, shares: 32, sector: 'Financials', entryPrice: 425000, entryDate: 'Q1 2015' }
+        ]
+      },
+      {
+        id: 'akre', name: 'Chuck Akre', fund: 'Akre Capital', aum: '$14.4B',
+        strategy: 'Three-legged stool: business, people, reinvestment',
+        holdings: [
+          { ticker: 'MA', name: 'Mastercard Inc', weight: 17.89, shares: 3155594, sector: 'Financials', entryPrice: 285.40, entryDate: 'Q3 2018' },
+          { ticker: 'BN', name: 'Brookfield Corp', weight: 13.14, shares: 18500000, sector: 'Financials', entryPrice: 38.50, entryDate: 'Q4 2022' },
+          { ticker: 'KKR', name: 'KKR & Co Inc', weight: 11.29, shares: 7200000, sector: 'Financials', entryPrice: 58.90, entryDate: 'Q4 2021' },
+          { ticker: 'V', name: 'Visa Inc', weight: 10.12, shares: 2850000, sector: 'Financials', entryPrice: 178.90, entryDate: 'Q2 2019' },
+          { ticker: 'MCO', name: "Moody's Corp", weight: 10.07, shares: 1950000, sector: 'Financials', entryPrice: 245.60, entryDate: 'Q1 2020' }
+        ]
+      },
+      {
+        id: 'hohn', name: 'Chris Hohn', fund: 'TCI Fund Management', aum: '$52.7B',
+        strategy: 'Ultra-concentrated activist, infrastructure focus',
+        holdings: [
+          { ticker: 'GE', name: 'General Electric', weight: 27.12, shares: 74000000, sector: 'Industrials', entryPrice: 85.30, entryDate: 'Q1 2022' },
+          { ticker: 'V', name: 'Visa Inc', weight: 18.18, shares: 29200000, sector: 'Financials', entryPrice: 198.30, entryDate: 'Q3 2020' },
+          { ticker: 'MSFT', name: 'Microsoft Corp', weight: 16.31, shares: 20000000, sector: 'Technology', entryPrice: 285.40, entryDate: 'Q2 2021' },
+          { ticker: 'MCO', name: "Moody's Corp", weight: 12.03, shares: 13100000, sector: 'Financials', entryPrice: 312.50, entryDate: 'Q1 2021' },
+          { ticker: 'SPGI', name: 'S&P Global Inc', weight: 10.33, shares: 10300000, sector: 'Financials', entryPrice: 385.20, entryDate: 'Q3 2021' }
+        ]
+      },
+      {
+        id: 'sosin', name: 'Clifford Sosin', fund: 'CAS Investment Partners', aum: '$2.24B',
+        strategy: 'Extreme concentration, one massive bet',
+        holdings: [
+          { ticker: 'CVNA', name: 'Carvana Co', weight: 82.26, shares: 4889674, sector: 'Consumer', entryPrice: 28.50, entryDate: 'Q4 2022' },
+          { ticker: 'HGV', name: 'Hilton Grand Vacations', weight: 10.52, shares: 4850000, sector: 'Travel', entryPrice: 38.40, entryDate: 'Q2 2023' }
+        ]
+      },
+      {
+        id: 'abrams', name: 'David Abrams', fund: 'Abrams Capital', aum: '$6.17B',
+        strategy: 'Klarman protégé, unlevered, durable cash-rich',
+        holdings: [
+          { ticker: 'LOAR', name: 'Loar Holdings', weight: 41.56, shares: 32000000, sector: 'Industrials', entryPrice: 52.30, entryDate: 'Q1 2024' },
+          { ticker: 'LAD', name: 'Lithia Motors', weight: 12.76, shares: 2250000, sector: 'Consumer', entryPrice: 285.60, entryDate: 'Q3 2023' }
+        ]
+      },
+      {
+        id: 'chou', name: 'Francis Chou', fund: 'Chou Associates', aum: '$208M',
+        strategy: 'Deep value, contrarian, long holding periods',
+        holdings: [
+          { ticker: 'BRK.A', name: 'Berkshire Hathaway A', weight: 31.20, shares: 88, sector: 'Financials', entryPrice: 485000, entryDate: 'Q1 2010' }
+        ]
+      },
+      {
+        id: 'jain', name: 'Rajiv Jain', fund: 'GQG Partners', aum: '$148.8B',
+        strategy: 'Quality growth, global emerging markets',
+        holdings: [
+          { ticker: 'PM', name: 'Philip Morris Intl', weight: 12.40, shares: 54981850, sector: 'Consumer', entryPrice: 95.80, entryDate: 'Q2 2022' },
+          { ticker: 'MSFT', name: 'Microsoft Corp', weight: 10.20, shares: 22500000, sector: 'Technology', entryPrice: 335.20, entryDate: 'Q3 2023' }
+        ]
+      },
+      {
+        id: 'ackman', name: 'Bill Ackman', fund: 'Pershing Square', aum: '$14.64B',
+        strategy: 'Activist investor, ultra-concentrated',
+        holdings: [
+          { ticker: 'UBER', name: 'Uber Technologies', weight: 20.25, shares: 34500000, sector: 'Technology', entryPrice: 42.50, entryDate: 'Q4 2023' },
+          { ticker: 'BN', name: 'Brookfield Corp', weight: 19.21, shares: 41000000, sector: 'Financials', entryPrice: 45.20, entryDate: 'Q1 2023' },
+          { ticker: 'HHH', name: 'Howard Hughes Holdings', weight: 10.58, shares: 19000000, sector: 'Real Estate', entryPrice: 72.30, entryDate: 'Q2 2024' },
+          { ticker: 'GOOG', name: 'Alphabet Inc C', weight: 10.52, shares: 4600000, sector: 'Technology', entryPrice: 125.40, entryDate: 'Q2 2024' },
+          { ticker: 'QSR', name: 'Restaurant Brands Intl', weight: 10.04, shares: 21000000, sector: 'Consumer', entryPrice: 68.90, entryDate: 'Q1 2023' }
+        ]
+      },
+      {
+        id: 'tepper', name: 'David Tepper', fund: 'Appaloosa Management', aum: '$7.38B',
+        strategy: 'Macro-driven, China & tech opportunist',
+        holdings: [
+          { ticker: 'BABA', name: 'Alibaba Group', weight: 15.61, shares: 6450000, sector: 'Technology', entryPrice: 85.20, entryDate: 'Q1 2024' }
+        ]
+      },
+      {
+        id: 'fitzpatrick', name: 'C.T. Fitzpatrick', fund: 'Vulcan Value Partners', aum: '$5.52B',
+        strategy: 'Deep value, margin of safety focused',
+        holdings: [
+          { ticker: 'MSFT', name: 'Microsoft Corp', weight: 12.85, shares: 1185402, sector: 'Technology', entryPrice: 298.40, entryDate: 'Q4 2022' },
+          { ticker: 'EG', name: 'Everest Group', weight: 10.42, shares: 1380000, sector: 'Financials', entryPrice: 365.40, entryDate: 'Q3 2023' },
+          { ticker: 'UNH', name: 'UnitedHealth Group', weight: 10.18, shares: 1070000, sector: 'Healthcare', entryPrice: 485.60, entryDate: 'Q2 2023' }
+        ]
+      },
+      {
+        id: 'prasad', name: 'Pulak Prasad', fund: 'Nalanda Capital', aum: '$5.0B',
+        strategy: 'India-focused, permanent owner of best-run companies',
+        holdings: [
+          { ticker: 'G', name: 'Genpact Ltd', weight: 52.70, shares: 12686944, sector: 'Technology', entryPrice: 38.20, entryDate: 'Q4 2019' },
+          { ticker: 'WNS', name: 'WNS Holdings', weight: 47.30, shares: 4850000, sector: 'Technology', entryPrice: 62.40, entryDate: 'Q1 2020' }
+        ]
+      },
+      {
+        id: 'gaonkar', name: 'Mala Gaonkar', fund: 'SurgoCap Partners', aum: '$4.83B',
+        strategy: 'Tech, media, emerging-market financials',
+        holdings: [
+          { ticker: 'TSM', name: 'Taiwan Semiconductor', weight: 22.50, shares: 1290570, sector: 'Technology', entryPrice: 98.50, entryDate: 'Q3 2022' },
+          { ticker: 'MCK', name: 'McKesson Corp', weight: 15.80, shares: 680000, sector: 'Healthcare', entryPrice: 425.80, entryDate: 'Q1 2023' },
+          { ticker: 'BSX', name: 'Boston Scientific', weight: 12.40, shares: 4750000, sector: 'Healthcare', entryPrice: 52.30, entryDate: 'Q4 2022' },
+          { ticker: 'LPLA', name: 'LPL Financial', weight: 10.20, shares: 980000, sector: 'Financials', entryPrice: 245.60, entryDate: 'Q2 2023' }
+        ]
+      },
+      {
+        id: 'lindsell', name: 'Nick Train', fund: 'Lindsell Train', aum: '$4.08B',
+        strategy: 'Low turnover, high conviction durable franchises',
+        holdings: [
+          { ticker: 'TKO', name: 'TKO Group Holdings', weight: 14.64, shares: 2954704, sector: 'Media', entryPrice: 85.40, entryDate: 'Q3 2023' },
+          { ticker: 'GOOGL', name: 'Alphabet Inc A', weight: 13.32, shares: 1625000, sector: 'Technology', entryPrice: 142.50, entryDate: 'Q1 2024' },
+          { ticker: 'DIS', name: 'Walt Disney Co', weight: 10.47, shares: 3600000, sector: 'Media', entryPrice: 92.30, entryDate: 'Q4 2022' },
+          { ticker: 'INTU', name: 'Intuit Inc', weight: 10.25, shares: 610000, sector: 'Technology', entryPrice: 485.60, entryDate: 'Q2 2022' }
+        ]
+      },
+      {
+        id: 'altarock', name: 'Mark Massey', fund: 'AltaRock Partners', aum: '$5.47B',
+        strategy: 'Undervalued companies with sustainable competitive advantages',
+        holdings: [
+          { ticker: 'AMZN', name: 'Amazon.com Inc', weight: 30.12, shares: 7558253, sector: 'Technology', entryPrice: 98.50, entryDate: 'Q1 2023' },
+          { ticker: 'MSFT', name: 'Microsoft Corp', weight: 22.45, shares: 2850000, sector: 'Technology', entryPrice: 285.40, entryDate: 'Q2 2021' },
+          { ticker: 'TDG', name: 'TransDigm Group', weight: 18.52, shares: 710000, sector: 'Industrials', entryPrice: 685.30, entryDate: 'Q4 2020' },
+          { ticker: 'MCO', name: "Moody's Corp", weight: 14.25, shares: 1600000, sector: 'Financials', entryPrice: 298.40, entryDate: 'Q3 2021' },
+          { ticker: 'MA', name: 'Mastercard Inc', weight: 12.18, shares: 1220000, sector: 'Financials', entryPrice: 345.20, entryDate: 'Q1 2022' }
+        ]
+      },
+      {
+        id: 'prospero', name: 'David Ebersman', fund: 'Prospero Capital', aum: '$2.1B',
+        strategy: 'Ex-Facebook CFO, tech-sector specialist',
+        holdings: [
+          { ticker: 'META', name: 'Meta Platforms', weight: 18.50, shares: 580000, sector: 'Technology', entryPrice: 185.40, entryDate: 'Q4 2022' },
+          { ticker: 'AMZN', name: 'Amazon.com Inc', weight: 15.20, shares: 1480000, sector: 'Technology', entryPrice: 112.30, entryDate: 'Q1 2023' },
+          { ticker: 'MSFT', name: 'Microsoft Corp', weight: 12.80, shares: 630000, sector: 'Technology', entryPrice: 298.50, entryDate: 'Q2 2022' }
+        ]
+      },
+      {
+        id: 'aschenbrenner', name: 'Leopold Aschenbrenner', fund: 'Aschenbrenner Capital', aum: '$850M',
+        strategy: 'AI-focused, deep tech conviction plays',
+        holdings: [
+          { ticker: 'NVDA', name: 'NVIDIA Corp', weight: 35.20, shares: 2100000, sector: 'Technology', entryPrice: 45.80, entryDate: 'Q1 2023' },
+          { ticker: 'MSFT', name: 'Microsoft Corp', weight: 22.40, shares: 445000, sector: 'Technology', entryPrice: 285.40, entryDate: 'Q2 2023' },
+          { ticker: 'GOOGL', name: 'Alphabet Inc A', weight: 18.30, shares: 465000, sector: 'Technology', entryPrice: 125.80, entryDate: 'Q3 2023' }
+        ]
+      }
+    ];
+
+    // Helper functions
+    function getInitials(name) {
+      return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    }
+
+    function formatNumber(num) {
+      return num ? num.toLocaleString() : '0';
+    }
+
+    function formatCurrency(value) {
+      if (value >= 1e9) return '$' + (value / 1e9).toFixed(2) + 'B';
+      if (value >= 1e6) return '$' + (value / 1e6).toFixed(1) + 'M';
+      return '$' + (value ? value.toLocaleString() : 0);
+    }
+
+    function filterHighConviction(holdings) {
+      return holdings.filter(h => h.weight >= 10);
+    }
+
+    function getSectorBadge(sector) {
+      const s = SECTORS[sector] || { bg: 'bg-gray-100', text: 'text-gray-700' };
+      return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${s.bg} ${s.text}">${sector}</span>`;
+    }
+
+    // Calculate consensus stocks
+    function getConsensus() {
+      const stockMap = {};
+      INVESTORS.forEach(inv => {
+        filterHighConviction(inv.holdings).forEach(h => {
+          if (!stockMap[h.ticker]) {
+            stockMap[h.ticker] = { ticker: h.ticker, name: h.name, sector: h.sector, weights: [], holders: [], entries: [] };
+          }
+          stockMap[h.ticker].weights.push(h.weight);
+          stockMap[h.ticker].holders.push(inv.name);
+          stockMap[h.ticker].entries.push({ investor: inv.name, price: h.entryPrice, date: h.entryDate });
+        });
+      });
+      return Object.values(stockMap)
+        .filter(s => s.holders.length >= 2)
+        .map(s => ({ ...s, avgWeight: s.weights.reduce((a, b) => a + b, 0) / s.weights.length }))
+        .sort((a, b) => b.holders.length - a.holders.length || b.avgWeight - a.avgWeight);
+    }
+
+    // Render consensus card
+    function renderConsensusCard(stock) {
+      const price = PRICES[stock.ticker] || 0;
+
+      let holdersHTML = stock.entries.map(e => {
+        const returnPct = ((price - e.price) / e.price * 100);
+        const isPositive = returnPct >= 0;
+        const colorClass = isPositive ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600';
+        const arrow = isPositive ? '↑' : '↓';
+
+        return `
+          <div class="px-4 py-2.5 grid grid-cols-12 items-center border-b border-stone-50 last:border-0">
+            <div class="col-span-5 flex items-center gap-2">
+              <div class="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-[10px] font-bold">${getInitials(e.investor)}</div>
+              <div>
+                <p class="text-sm font-medium text-stone-800">${e.investor}</p>
+                <p class="text-[10px] text-stone-400">${e.date}</p>
+              </div>
+            </div>
+            <div class="col-span-3 text-right">
+              <p class="text-sm text-stone-600">$${e.price.toFixed(2)}</p>
+            </div>
+            <div class="col-span-4 text-right">
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold ${colorClass}">
+                ${arrow} ${isPositive ? '+' : ''}${returnPct.toFixed(1)}%
+              </span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="bg-white rounded-2xl border border-stone-200 overflow-hidden card">
+          <div class="p-4">
+            <div class="flex items-start justify-between mb-3">
+              <div>
+                <div class="flex items-center gap-2">
+                  <h4 class="text-xl font-bold text-stone-900">${stock.ticker}</h4>
+                  ${getSectorBadge(stock.sector)}
+                </div>
+                <p class="text-sm text-stone-500 mt-0.5">${stock.name}</p>
+              </div>
+              <div class="text-right">
+                <p class="text-xl font-bold text-stone-900">$${price.toFixed(2)}</p>
+                <p class="text-[10px] text-stone-400">Current</p>
+              </div>
+            </div>
+            <div class="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full">
+              <span class="text-xs font-medium">Avg Weight:</span>
+              <span class="text-sm font-bold">${stock.avgWeight.toFixed(1)}%</span>
+            </div>
+          </div>
+          <div class="border-t border-stone-100">
+            <div class="px-4 py-2 bg-stone-50 border-b border-stone-100">
+              <div class="grid grid-cols-12 text-[10px] font-semibold text-stone-500 uppercase tracking-wide">
+                <div class="col-span-5">Investor</div>
+                <div class="col-span-3 text-right">Entry</div>
+                <div class="col-span-4 text-right">Return</div>
+              </div>
+            </div>
+            ${holdersHTML}
+          </div>
+        </div>
+      `;
+    }
+
+    // Render investor card with entry prices under each position
+    function renderInvestorCard(investor) {
+      const filtered = filterHighConviction(investor.holdings);
+      const hasHoldings = filtered.length > 0;
+      const cardId = 'card-' + investor.id;
+
+      let holdingsHTML = '';
+      if (hasHoldings) {
+        const rows = filtered.map(h => {
+          const price = PRICES[h.ticker] || 0;
+          const value = h.shares * price;
+          const returnPct = ((price - h.entryPrice) / h.entryPrice * 100);
+          const isPositive = returnPct >= 0;
+          const returnColor = isPositive ? 'text-emerald-600' : 'text-red-600';
+          const returnBg = isPositive ? 'bg-emerald-50' : 'bg-red-50';
+
+          return `
+            <tr class="border-b border-stone-100 last:border-0">
+              <td class="px-4 py-3">
+                <span class="font-bold text-stone-900">${h.ticker}</span>
+                <p class="text-xs text-stone-400">${h.name}</p>
+                <div class="mt-1 flex items-center gap-2">
+                  <span class="text-[10px] px-1.5 py-0.5 bg-stone-100 text-stone-600 rounded">Entry: $${h.entryPrice.toFixed(2)}</span>
+                  <span class="text-[10px] text-stone-400">${h.entryDate}</span>
+                </div>
+              </td>
+              <td class="px-4 py-3">${getSectorBadge(h.sector)}</td>
+              <td class="px-4 py-3 text-right">
+                <div class="flex items-center justify-end gap-2">
+                  <div class="w-12 bg-stone-200 rounded-full h-1.5">
+                    <div class="bg-emerald-500 h-1.5 rounded-full" style="width: ${Math.min(h.weight * 2, 100)}%"></div>
+                  </div>
+                  <span class="font-bold text-emerald-700 w-12 text-right">${h.weight.toFixed(1)}%</span>
+                </div>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <p class="text-sm font-bold text-stone-800">${formatCurrency(value)}</p>
+                <span class="text-xs px-1.5 py-0.5 rounded ${returnBg} ${returnColor} font-semibold">${isPositive ? '+' : ''}${returnPct.toFixed(1)}%</span>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        holdingsHTML = `
+          <div id="${cardId}-holdings" class="hidden border-t border-stone-100 overflow-x-auto bg-stone-50/50">
+            <table class="w-full min-w-[550px]">
+              <thead>
+                <tr class="text-[10px] text-stone-500 uppercase tracking-wider border-b border-stone-100">
+                  <th class="px-4 py-2.5 text-left font-semibold">Stock / Entry</th>
+                  <th class="px-4 py-2.5 text-left font-semibold">Sector</th>
+                  <th class="px-4 py-2.5 text-right font-semibold">Weight</th>
+                  <th class="px-4 py-2.5 text-right font-semibold">Value / Return</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        `;
+      } else {
+        holdingsHTML = `
+          <div class="px-4 pb-4">
+            <div class="bg-stone-50 rounded-xl p-3 text-center">
+              <p class="text-sm text-stone-500">No high conviction bets this quarter</p>
+              <p class="text-xs text-stone-400">(No position ≥ 10%)</p>
+            </div>
+          </div>
+        `;
+      }
+
+      const clickHandler = hasHoldings ? `onclick="toggleHoldings('${cardId}')"` : '';
+      const cursorClass = hasHoldings ? 'cursor-pointer hover:bg-stone-50/50' : '';
+      const chevron = hasHoldings ? `
+        <div id="${cardId}-chevron" class="w-7 h-7 rounded-full bg-stone-100 flex items-center justify-center transition-transform duration-200">
+          <svg class="w-4 h-4 text-stone-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </div>
+      ` : '';
+
+      return `
+        <div class="bg-white border border-stone-200 rounded-2xl overflow-hidden card">
+          <div class="p-4 ${cursorClass}" ${clickHandler}>
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-full bg-gradient-to-br from-stone-600 to-stone-800 flex items-center justify-center text-white text-base font-bold flex-shrink-0">
+                ${getInitials(investor.name)}
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h3 class="text-base font-bold text-stone-900">${investor.name}</h3>
+                  ${hasHoldings ? `<span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">${filtered.length} pick${filtered.length > 1 ? 's' : ''}</span>` : ''}
+                </div>
+                <p class="text-sm text-stone-500">${investor.fund}</p>
+                <p class="text-xs text-stone-400 italic mt-0.5 truncate">${investor.strategy}</p>
+              </div>
+              <div class="text-right shrink-0">
+                <p class="text-base font-bold text-stone-800">${investor.aum}</p>
+                <p class="text-[10px] text-stone-400 uppercase">AUM</p>
+              </div>
+              ${chevron}
+            </div>
+          </div>
+          ${holdingsHTML}
+        </div>
+      `;
+    }
+
+    // Toggle holdings visibility
+    function toggleHoldings(cardId) {
+      const holdings = document.getElementById(cardId + '-holdings');
+      const chevron = document.getElementById(cardId + '-chevron');
+      if (holdings) {
+        holdings.classList.toggle('hidden');
+        if (chevron) {
+          chevron.classList.toggle('rotate-180');
+        }
+      }
+    }
+
+    // Render everything
+    function render(searchTerm = '') {
+      const consensus = getConsensus();
+
+      // Filter investors
+      let filtered = INVESTORS;
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        filtered = INVESTORS.filter(inv =>
+          inv.name.toLowerCase().includes(term) ||
+          inv.fund.toLowerCase().includes(term) ||
+          inv.holdings.some(h => h.ticker.toLowerCase().includes(term) || h.name.toLowerCase().includes(term))
+        );
+      }
+
+      // Update stats
+      const totalPicks = INVESTORS.reduce((acc, inv) => acc + filterHighConviction(inv.holdings).length, 0);
+      const activeInvestors = INVESTORS.filter(inv => filterHighConviction(inv.holdings).length > 0).length;
+
+      document.getElementById('totalPicks').textContent = totalPicks;
+      document.getElementById('consensusCount').textContent = consensus.length;
+      document.getElementById('activeCount').textContent = activeInvestors;
+      document.getElementById('totalInvestors').textContent = '/' + INVESTORS.length;
+      document.getElementById('consensusLabel').textContent = consensus.length + ' stocks';
+      document.getElementById('investorCount').textContent = filtered.length + ' investors';
+
+      // Render consensus
+      document.getElementById('consensusGrid').innerHTML = consensus.map(renderConsensusCard).join('');
+
+      // Render investors
+      document.getElementById('investorGrid').innerHTML = filtered.map(renderInvestorCard).join('');
+    }
+
+    // Search handler
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      render(e.target.value);
+    });
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
